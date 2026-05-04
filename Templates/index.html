@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Traffic Monitoring Platform</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+</head>
+
+<body>
+
+
+    <div class="main-layout">
+
+        
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">🛡️</div>
+                <span class="logo-text">DAW GUARD</span>
+            </div>
+
+            <nav class="sidebar-menu">
+                <a href="{{ url_for('index') }}" style="text-decoration: none;">
+                    <div class="menu-item active">
+                        <span class="menu-icon"><i class="fas fa-home"></i></span>
+                        <span class="menu-text">Dashboard</span>
+                    </div>
+                </a>
+                <a href="{{ url_for('index') }}" style="text-decoration: none;">
+                    <div class="menu-item">
+                        <span class="menu-icon"><i class="fas fa-wifi"></i></span>
+                        <span class="menu-text">Traffic Monitor</span>
+                    </div>
+                </a>
+                <a href="#logs" style="text-decoration: none;">
+                    <div class="menu-item">
+                        <span class="menu-icon"><i class="fas fa-file-alt"></i></span>
+                        <span class="menu-text">Logs</span>
+                    </div>
+                </a>
+                <a href="{{ url_for('index') }}" style="text-decoration: none;">
+                    <div class="menu-item">
+                        <span class="menu-icon"><i class="fas fa-chart-bar"></i></span>
+                        <span class="menu-text">Statistics</span>
+                    </div>
+                </a>
+                
+
+            </nav>
+
+            
+        </aside>
+
+        =
+        <div class="main-area">
+
+            
+            <header class="top-header">
+                <h1>Network Traffic Monitoring Platform</h1>
+                <form method="POST" action="{{ url_for('upload_file') }}" enctype="multipart/form-data"
+                    style="display: flex; gap: 10px; align-items: center;">
+
+                    <!-- FILE INPUT WITH CUSTOM STYLING -->
+                    <div class="file-input-wrapper">
+                        <label class="btn-upload" for="csvFile"> 
+                            📁 Choose CSV File
+                        </label>
+                        <input type="file" id="csvFile" name="file" accept=".csv" required
+                            onchange="displayFileName(this)">
+                        <span class="file-name-display" id="fileName"></span>
+                    </div>
+
+                    <!-- UPLOAD BUTTON -->
+                    <button type="submit" class="btn-upload">📤 Upload CSV</button>
+                </form>
+            </header>
+
+            <!-- MESSAGE DISPLAY -->
+            {% if error %}
+            <div
+                style="background-color: #c0392b; color: white; padding: 15px; margin: 10px 25px 0; border-radius: 6px; border-left: 4px solid #a93226;">
+                {{ error }}
+            </div>
+            {% endif %}
+            {% if success %}
+            <div
+                style="background-color: #27ae60; color: white; padding: 15px; margin: 10px 25px 0; border-radius: 6px; border-left: 4px solid #1e8449;">
+                {{ success }}
+            </div>
+            {% endif %}
+
+
+            <!-- CONTENT WRAPPER -->
+            <div class="content-grid">
+
+                <!-- LEFT CONTENT - FILTERS & TABLE & LOGS -->
+                <div class="left-section">
+
+                    <!-- FILTERS SECTION -->
+                    <div class="filter-section">
+                        <h3>FILTERS</h3>
+
+                        <form method="GET" action="{{ url_for('filter_packets') }}" style="display: contents;">
+                            <div class="filter-row">
+                                <div class="filter-group">
+                                    <label>Protocol</label>
+                                    <select name="protocol">
+                                        <option value="All">All</option>
+                                        <option value="TCP">TCP</option>
+                                        <option value="UDP">UDP</option>
+                                        <option value="ICMP">ICMP</option>
+                                    </select>
+                                </div>
+
+                                <div class="filter-group">
+                                    <label>Source IP</label>
+                                    <input type="text" name="source_ip" placeholder="Enter source IP">
+                                </div>
+
+                                <div class="filter-group">
+                                    <label>Destination IP</label>
+                                    <input type="text" name="dest_ip" placeholder="Enter destination IP">
+                                </div>
+
+                                <div class="filter-group">
+                                    <label>Service</label>
+                                    <select name="service">
+                                        <option value="All">All</option>
+                                        {% for service in services %}
+                                        <option value="{{ service }}">{{ service }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="filter-buttons">
+                                <button type="submit" class="btn btn-filter">🔎 Apply Filters</button>
+                                <a href="{{ url_for('index') }}"
+                                    style="flex: 1; display: block; text-decoration: none;">
+                                    <div class="btn btn-clear"
+                                        style="width: 100%; cursor: pointer; margin: 0; text-align: center; display: flex; align-items: center; justify-content: center;">
+                                        ✖ Clear</div>
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- LIVE TRAFFIC TABLE -->
+                    <div class="traffic-section">
+                        <h3>LIVE TRAFFIC</h3>
+                        <div class="table-wrapper">
+                            <table id="packetsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Source IP</th>
+                                        <th>Destination IP</th>
+                                        <th>Protocol</th>
+                                        <th>Size (bytes)</th>
+                                        <th>S.Port</th>
+                                        <th>D.Port</th>
+                                        <th>Service</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableBody">
+                                    {% if packets %}
+                                    {% for packet in packets %}
+                                    <tr>
+                                        <td>{{ packet['Time'] }}</td>
+                                        <td>{{ packet['Source IP'] }}</td>
+                                        <td>{{ packet['Destination IP'] }}</td>
+                                        <td>
+                                            {% if packet['Protocol'] == 'TCP' %}
+                                            <span class="badge badge-tcp">{{ packet['Protocol'] }}</span>
+                                            {% elif packet['Protocol'] == 'UDP' %}
+                                            <span class="badge badge-udp">{{ packet['Protocol'] }}</span>
+                                            {% elif packet['Protocol'] == 'ICMP' %}
+                                            <span class="badge badge-icmp">{{ packet['Protocol'] }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ packet['Size'] }}</td>
+                                        <td>{{ packet['Source Port'] }}</td>
+                                        <td>{{ packet['Dest Port'] }}</td>
+                                        <td>{{ packet['Service'] }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="8" style="text-align: center; color: #999;">Upload CSV to view
+                                            packets</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- LOG RECORDS -->
+                    <div id="logs"></div>
+                    <div class="logs-section">
+                        <h3>LOG RECORDS</h3>
+                        <div class="log-box" id="logBox">
+                            {% if logs %}
+                            {% for log in logs %}
+                            <div class="log-entry">{{ log }}</div>
+                            {% endfor %}
+                            {% else %}
+                            <p style="color: #666;">Logs will appear after uploading CSV...</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- RIGHT SECTION - STATISTICS PANEL -->
+                <aside class="right-section">
+                    <div class="stats-panel">
+                        <h3>STATISTICS</h3>
+
+                        <div class="stat-item">
+                            <div class="stat-icon">📊</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Total Packets</div>
+                                <div class="stat-value">{{ stats['total'] if stats else 0 }}</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-item">
+                            <div class="stat-icon">📤</div>
+                            <div class="stat-content">
+                                <div class="stat-label">TCP Packets</div>
+                                <div class="stat-value">{{ stats['tcp'] if stats else 0 }}</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-item">
+                            <div class="stat-icon">📊</div>
+                            <div class="stat-content">
+                                <div class="stat-label">UDP Packets</div>
+                                <div class="stat-value">{{ stats['udp'] if stats else 0 }}</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-item">
+                            <div class="stat-icon">📡</div>
+                            <div class="stat-content">
+                                <div class="stat-label">ICMP Packets</div>
+                                <div class="stat-value">{{ stats['icmp'] if stats else 0 }}</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-item">
+                            <div class="stat-icon">⏱️</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Avg Size (bytes)</div>
+                                <div class="stat-value">{{ stats['avg_size'] if stats else 0 }}</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-item">
+                            <div class="stat-icon">📁</div>
+                            <div class="stat-content">
+                                <div class="stat-label">File Status</div>
+                                <div class="stat-value">{% if packets %}CSV Loaded{% else %}Waiting{% endif %}</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-item">
+                            <div class="stat-icon">🌐</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Status</div>
+                                <div class="stat-value status">{% if packets %}● Active{% else %}● Waiting{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        function displayFileName(input) {
+            const fileName = input.files[0]?.name || '';
+            document.getElementById('fileName').textContent = fileName ? '✓ ' + fileName : '';
+        }
+    </script>
+
+</body>
+
+</html>
